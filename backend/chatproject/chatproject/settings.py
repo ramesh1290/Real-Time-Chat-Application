@@ -25,8 +25,15 @@ SECRET_KEY = 'django-insecure-33^p$$am6%m3^)2jzlf%h6*-49+-@=8%xn$%=+l590oh48h5o=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
-
+ALLOWED_HOSTS = [
+    "real-time-chat-application2-yxtc.onrender.com",
+    ".onrender.com",
+    "127.0.0.1",
+    "localhost",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "https://real-time-chat-application4.onrender.com",
+]
 
 # Application definition
 
@@ -59,7 +66,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://real-time-chat-application4.onrender.com",
+]
 
 ROOT_URLCONF = 'chatproject.urls'
 
