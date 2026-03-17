@@ -74,7 +74,9 @@ MIDDLEWARE = [
 ]
 CORS_ALLOWED_ORIGINS = [
     "https://real-time-chat-application4.onrender.com",
+ 
 ]
+# CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'chatproject.urls'
 

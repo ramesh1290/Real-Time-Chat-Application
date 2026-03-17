@@ -9,6 +9,7 @@ import {
   WifiOff,
   PencilLine,
 } from "lucide-react";
+import Notifications from "./Notifications";
 
 type Receipt = {
   username: string;
@@ -73,6 +74,8 @@ export default function WebSocketChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connected, setConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [playSend, setPlaySend] = useState(false);
+  const [playReceive, setPlayReceive] = useState(false);
 
   const socketRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -88,7 +91,7 @@ export default function WebSocketChat() {
   }, []);
 
   useEffect(() => {
-    const ws = new WebSocket("wss://real-time-chat-application2-yxtc.onrender.com/ws/chat/");
+    const ws = new WebSocket("ws://127.0.0.1:8000/ws/chat/");
     socketRef.current = ws;
 
     ws.onopen = () => {
@@ -177,6 +180,11 @@ export default function WebSocketChat() {
       const isOtherUserMessage =
         chatData.username.trim().toLowerCase() !== username.trim().toLowerCase();
 
+      if (isOtherUserMessage) {
+        setPlayReceive(false);
+        setTimeout(() => setPlayReceive(true), 0);
+      }
+
       if (
         isOtherUserMessage &&
         socketRef.current &&
@@ -220,7 +228,7 @@ export default function WebSocketChat() {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await fetch("https://real-time-chat-application2-yxtc.onrender.com/api/messages/", {
+        const res = await fetch("http://127.0.0.1:8000/api/messages/", {
           cache: "no-store",
         });
 
@@ -341,6 +349,9 @@ export default function WebSocketChat() {
       })
     );
 
+    setPlaySend(false);
+    setTimeout(() => setPlaySend(true), 0);
+
     sendTypingEvent(false);
     setText("");
     inputRef.current?.focus();
@@ -372,305 +383,309 @@ export default function WebSocketChat() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_45%,#000000_100%)] flex items-center justify-center px-3 py-4 sm:px-6 sm:py-6">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.97, y: 18 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="w-full max-w-5xl h-[95vh] sm:h-[92vh] mx-auto rounded-[30px] overflow-hidden border border-cyan-400/10 bg-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(34,211,238,0.10),0_25px_100px_rgba(0,0,0,0.45)] flex flex-col"
-      >
-        <div className="border-b border-cyan-300/10 bg-white/10 backdrop-blur-2xl px-4 py-4 sm:px-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0 flex items-center gap-3">
-              <div
-                className={`h-12 w-12 rounded-full bg-linear-to-br ${currentUserGradient} flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(34,211,238,0.25)] border border-white/20 shrink-0`}
-              >
-                {getAvatarLetter(username || "U")}
+    <>
+      <Notifications playSend={playSend} playReceive={playReceive} />
+
+      <div className="min-h-screen w-full bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_45%,#000000_100%)] flex items-center justify-center px-3 py-4 sm:px-6 sm:py-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97, y: 18 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="w-full max-w-5xl h-[95vh] sm:h-[92vh] mx-auto rounded-[30px] overflow-hidden border border-cyan-400/10 bg-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(34,211,238,0.10),0_25px_100px_rgba(0,0,0,0.45)] flex flex-col"
+        >
+          <div className="border-b border-cyan-300/10 bg-white/10 backdrop-blur-2xl px-4 py-4 sm:px-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex items-center gap-3">
+                <div
+                  className={`h-12 w-12 rounded-full bg-linear-to-br ${currentUserGradient} flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(34,211,238,0.25)] border border-white/20 shrink-0`}
+                >
+                  {getAvatarLetter(username || "U")}
+                </div>
+
+                <div className="min-w-0">
+                  <h1 className="truncate text-lg font-bold text-white sm:text-2xl">
+                    Chat Application
+                  </h1>
+
+                  {username ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-300 sm:text-sm">
+                      <span className="inline-flex items-center gap-1.5">
+                        <UserCircle2 size={15} />
+                        Current user:
+                      </span>
+                      <span className="font-semibold text-cyan-300">
+                        {username}
+                      </span>
+                      <button
+                        onClick={handleEditCurrentName}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-white/15"
+                      >
+                        <PencilLine size={12} />
+                        Edit
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-300 sm:text-sm">
+                      Choose your username to start chatting
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <h1 className="truncate text-lg font-bold text-white sm:text-2xl">
-                  Chat Application
-                </h1>
+              <div className="flex shrink-0 items-center gap-2">
+                <motion.div
+                  animate={{ scale: connected ? [1, 1.05, 1] : 1 }}
+                  transition={{ duration: 0.35 }}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm ${
+                    connected
+                      ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-400"
+                      : "border-rose-400/30 bg-rose-500/15 text-rose-400"
+                  }`}
+                >
+                  {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
+                  {connected ? "Connected" : "Disconnected"}
+                </motion.div>
 
-                {username ? (
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-300 sm:text-sm">
-                    <span className="inline-flex items-center gap-1.5">
-                      <UserCircle2 size={15} />
-                      Current user:
-                    </span>
-                    <span className="font-semibold text-cyan-300">
-                      {username}
-                    </span>
-                    <button
-                      onClick={handleEditCurrentName}
-                      className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-white/15"
-                    >
-                      <PencilLine size={12} />
-                      Edit
-                    </button>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-300 sm:text-sm">
-                    Choose your username to start chatting
-                  </p>
+                {username && (
+                  <button
+                    onClick={handleChangeUser}
+                    className="hidden rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/15 sm:inline-flex"
+                  >
+                    Change User
+                  </button>
                 )}
               </div>
             </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <motion.div
-                animate={{ scale: connected ? [1, 1.05, 1] : 1 }}
-                transition={{ duration: 0.35 }}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm ${
-                  connected
-                    ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-400"
-                    : "border-rose-400/30 bg-rose-500/15 text-rose-400"
-                }`}
-              >
-                {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-                {connected ? "Connected" : "Disconnected"}
-              </motion.div>
-
-              {username && (
-                <button
-                  onClick={handleChangeUser}
-                  className="hidden rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/15 sm:inline-flex"
-                >
-                  Change User
-                </button>
-              )}
-            </div>
           </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(8,15,33,0.50),rgba(1,4,10,0.82))] px-3 py-4 sm:px-5">
-          {!username ? (
-            <div className="flex h-full items-center justify-center">
-              <motion.div
-                initial={{ opacity: 0, y: 22, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                className="w-full max-w-md rounded-[28px] border border-cyan-400/10 bg-white/10 p-6 shadow-[0_0_50px_rgba(34,211,238,0.08)] backdrop-blur-2xl sm:p-7"
-              >
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-brrom-cyan-500 to-blue-600 text-white shadow-lg">
-                    <UserCircle2 size={28} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-white">Welcome</h2>
-                    <p className="text-sm text-slate-300">
-                      Set your name once for this browser
-                    </p>
-                  </div>
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Enter your username"
-                  value={tempUsername}
-                  onChange={(e) => setTempUsername(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveUsername();
-                  }}
-                  className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500"
-                />
-
-                <button
-                  onClick={handleSaveUsername}
-                  className="mt-4 w-full rounded-2xl bg-linear-to-rrom-cyan-500 to-blue-600 px-4 py-3 font-semibold text-white shadow-lg transition hover:from-cyan-400 hover:to-blue-500"
+          <div className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(8,15,33,0.50),rgba(1,4,10,0.82))] px-3 py-4 sm:px-5">
+            {!username ? (
+              <div className="flex h-full items-center justify-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 22, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  className="w-full max-w-md rounded-[28px] border border-cyan-400/10 bg-white/10 p-6 shadow-[0_0_50px_rgba(34,211,238,0.08)] backdrop-blur-2xl sm:p-7"
                 >
-                  Continue
-                </button>
-              </motion.div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <AnimatePresence initial={false}>
-                {messages.map((msg, index) => {
-                  const isOwnMessage =
-                    msg.username.toLowerCase() === username.toLowerCase();
-                  const avatarGradient = getAvatarGradient(msg.username);
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-brrom-cyan-500 to-blue-600 text-white shadow-lg">
+                      <UserCircle2 size={28} />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">Welcome</h2>
+                      <p className="text-sm text-slate-300">
+                        Set your name once for this browser
+                      </p>
+                    </div>
+                  </div>
 
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 18, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{
-                        duration: 0.22,
-                        delay: Math.min(index * 0.015, 0.12),
-                      }}
-                      className={`flex items-end gap-2 ${
-                        isOwnMessage ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      {!isOwnMessage && (
-                        <div
-                          className={`h-9 w-9 shrink-0 rounded-full bg-linear-to-br ${avatarGradient} flex items-center justify-center border border-white/20 text-sm font-bold text-white shadow-[0_0_15px_rgba(255,255,255,0.08)]`}
-                        >
-                          {getAvatarLetter(msg.username)}
-                        </div>
-                      )}
+                  <input
+                    type="text"
+                    placeholder="Enter your username"
+                    value={tempUsername}
+                    onChange={(e) => setTempUsername(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveUsername();
+                    }}
+                    className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500"
+                  />
 
-                      <div
-                        className={`relative max-w-[84%] rounded-[22px] border px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:scale-[1.01] sm:max-w-[68%] ${
-                          isOwnMessage
-                            ? "rounded-br-md border-cyan-200/20 bg-linear-to-bran-500 to-blue-600 text-white"
-                            : "rounded-bl-md border-white/10 bg-white/10 text-slate-100 backdrop-blur-xl"
+                  <button
+                    onClick={handleSaveUsername}
+                    className="mt-4 w-full rounded-2xl bg-linear-to-rrom-cyan-500 to-blue-600 px-4 py-3 font-semibold text-white shadow-lg transition hover:from-cyan-400 hover:to-blue-500"
+                  >
+                    Continue
+                  </button>
+                </motion.div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <AnimatePresence initial={false}>
+                  {messages.map((msg, index) => {
+                    const isOwnMessage =
+                      msg.username.toLowerCase() === username.toLowerCase();
+                    const avatarGradient = getAvatarGradient(msg.username);
+
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{
+                          duration: 0.22,
+                          delay: Math.min(index * 0.015, 0.12),
+                        }}
+                        className={`flex items-end gap-2 ${
+                          isOwnMessage ? "justify-end" : "justify-start"
                         }`}
                       >
                         {!isOwnMessage && (
-                          <span className="absolute -left-1 bottom-0 h-4 w-4 rotate-45 rounded-sm border-l border-b border-white/10 bg-white/10 backdrop-blur-xl" />
-                        )}
-                        {isOwnMessage && (
-                          <span className="absolute -right-1 bottom-0 h-4 w-4 rotate-45 rounded-sm bg-cyan-500" />
-                        )}
-
-                        <div className="relative z-10">
-                          <div className="mb-1 flex items-center justify-between gap-3">
-                            <span
-                              className={`text-sm font-bold ${
-                                isOwnMessage ? "text-cyan-50" : "text-cyan-300"
-                              }`}
-                            >
-                              {isOwnMessage ? "You" : msg.username}
-                            </span>
+                          <div
+                            className={`h-9 w-9 shrink-0 rounded-full bg-linear-to-br ${avatarGradient} flex items-center justify-center border border-white/20 text-sm font-bold text-white shadow-[0_0_15px_rgba(255,255,255,0.08)]`}
+                          >
+                            {getAvatarLetter(msg.username)}
                           </div>
+                        )}
 
-                          <p className="wrap-break-wordwordword text-sm leading-relaxed sm:text-[15px]">
-                            {msg.text}
-                          </p>
-
-                          <div className="mt-2 flex justify-end">
-                            <p
-                              className={`text-[10px] sm:text-[11px] ${
-                                isOwnMessage
-                                  ? "text-cyan-50/80"
-                                  : "text-slate-400"
-                              }`}
-                            >
-                              {new Date(msg.created_at).toLocaleString()}
-                              {isOwnMessage && ` • ${getOwnMessageStatus(msg)}`}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {isOwnMessage && (
                         <div
-                          className={`h-9 w-9 shrink-0 rounded-full bg-linear-to-br ${currentUserGradient} flex items-center justify-center border border-white/20 text-sm font-bold text-white shadow-[0_0_15px_rgba(34,211,238,0.18)]`}
+                          className={`relative max-w-[84%] rounded-[22px] border px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:scale-[1.01] sm:max-w-[68%] ${
+                            isOwnMessage
+                              ? "rounded-br-md border-cyan-200/20 bg-linear-to-bran-500 to-blue-600 text-white"
+                              : "rounded-bl-md border-white/10 bg-white/10 text-slate-100 backdrop-blur-xl"
+                          }`}
                         >
-                          {getAvatarLetter(username)}
+                          {!isOwnMessage && (
+                            <span className="absolute -left-1 bottom-0 h-4 w-4 rotate-45 rounded-sm border-l border-b border-white/10 bg-white/10 backdrop-blur-xl" />
+                          )}
+                          {isOwnMessage && (
+                            <span className="absolute -right-1 bottom-0 h-4 w-4 rotate-45 rounded-sm bg-cyan-500" />
+                          )}
+
+                          <div className="relative z-10">
+                            <div className="mb-1 flex items-center justify-between gap-3">
+                              <span
+                                className={`text-sm font-bold ${
+                                  isOwnMessage ? "text-cyan-50" : "text-cyan-300"
+                                }`}
+                              >
+                                {isOwnMessage ? "You" : msg.username}
+                              </span>
+                            </div>
+
+                            <p className="wrap-break-wordwordword text-sm leading-relaxed sm:text-[15px]">
+                              {msg.text}
+                            </p>
+
+                            <div className="mt-2 flex justify-end">
+                              <p
+                                className={`text-[10px] sm:text-[11px] ${
+                                  isOwnMessage
+                                    ? "text-cyan-50/80"
+                                    : "text-slate-400"
+                                }`}
+                              >
+                                {new Date(msg.created_at).toLocaleString()}
+                                {isOwnMessage && ` • ${getOwnMessageStatus(msg)}`}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
 
-              <AnimatePresence>
-                {typingText && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 6 }}
-                    className="flex items-end gap-2 justify-start"
-                  >
-                    <div className="h-9 w-9 shrink-0 rounded-full bg-linear-to-brrom-violet-500 to-purple-600 flex items-center justify-center border border-white/20 text-sm font-bold text-white">
-                      …
-                    </div>
+                        {isOwnMessage && (
+                          <div
+                            className={`h-9 w-9 shrink-0 rounded-full bg-linear-to-br ${currentUserGradient} flex items-center justify-center border border-white/20 text-sm font-bold text-white shadow-[0_0_15px_rgba(34,211,238,0.18)]`}
+                          >
+                            {getAvatarLetter(username)}
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
 
-                    <div className="max-w-[84%] sm:max-w-[68%] rounded-[22px] rounded-bl-md border border-white/10 bg-white/10 backdrop-blur-xl px-4 py-3 relative">
-                      <span className="absolute -left-1 bottom-0 h-4 w-4 rotate-45 rounded-sm border-l border-b border-white/10 bg-white/10 backdrop-blur-xl" />
-                      <div className="relative z-10">
-                        <p className="text-sm text-slate-300 mb-2">{typingText}</p>
-                        <div className="flex items-center gap-1">
-                          <motion.span
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.7, delay: 0 }}
-                            className="h-2 w-2 rounded-full bg-cyan-300"
-                          />
-                          <motion.span
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.7, delay: 0.15 }}
-                            className="h-2 w-2 rounded-full bg-cyan-300"
-                          />
-                          <motion.span
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.7, delay: 0.3 }}
-                            className="h-2 w-2 rounded-full bg-cyan-300"
-                          />
+                <AnimatePresence>
+                  {typingText && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      className="flex items-end gap-2 justify-start"
+                    >
+                      <div className="h-9 w-9 shrink-0 rounded-full bg-linear-to-brrom-violet-500 to-purple-600 flex items-center justify-center border border-white/20 text-sm font-bold text-white">
+                        …
+                      </div>
+
+                      <div className="max-w-[84%] sm:max-w-[68%] rounded-[22px] rounded-bl-md border border-white/10 bg-white/10 backdrop-blur-xl px-4 py-3 relative">
+                        <span className="absolute -left-1 bottom-0 h-4 w-4 rotate-45 rounded-sm border-l border-b border-white/10 bg-white/10 backdrop-blur-xl" />
+                        <div className="relative z-10">
+                          <p className="text-sm text-slate-300 mb-2">{typingText}</p>
+                          <div className="flex items-center gap-1">
+                            <motion.span
+                              animate={{ y: [0, -4, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.7, delay: 0 }}
+                              className="h-2 w-2 rounded-full bg-cyan-300"
+                            />
+                            <motion.span
+                              animate={{ y: [0, -4, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.7, delay: 0.15 }}
+                              className="h-2 w-2 rounded-full bg-cyan-300"
+                            />
+                            <motion.span
+                              animate={{ y: [0, -4, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.7, delay: 0.3 }}
+                              className="h-2 w-2 rounded-full bg-cyan-300"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {messages.length === 0 && !typingText && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center pt-20"
+                  >
+                    <p className="text-lg font-medium text-slate-300">
+                      No messages yet
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      Start the conversation
+                    </p>
                   </motion.div>
                 )}
-              </AnimatePresence>
 
-              {messages.length === 0 && !typingText && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center pt-20"
+                <div ref={bottomRef} />
+              </div>
+            )}
+          </div>
+
+          {username && (
+            <div className="border-t border-cyan-300/10 bg-white/10 p-3 backdrop-blur-2xl sm:p-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${currentUserGradient} border border-white/20 text-white font-bold shadow-md sm:flex`}
                 >
-                  <p className="text-lg font-medium text-slate-300">
-                    No messages yet
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Start the conversation
-                  </p>
-                </motion.div>
-              )}
+                  {getAvatarLetter(username)}
+                </div>
 
-              <div ref={bottomRef} />
+                <div className="relative flex-1">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder={`Message as ${username}...`}
+                    value={text}
+                    onChange={(e) => handleTypingChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") sendMessage();
+                    }}
+                    className="w-full rounded-full border border-white/10 bg-white/10 py-3 pl-4 pr-14 text-white outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500"
+                  />
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.94 }}
+                    onClick={sendMessage}
+                    className="absolute right-1.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-linear-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.25)] transition hover:from-cyan-400 hover:to-blue-500"
+                  >
+                    <Send size={18} />
+                  </motion.button>
+                </div>
+              </div>
+
+              <div className="mt-3 flex justify-end sm:hidden">
+                <button
+                  onClick={handleChangeUser}
+                  className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/15"
+                >
+                  Change User
+                </button>
+              </div>
             </div>
           )}
-        </div>
-
-        {username && (
-          <div className="border-t border-cyan-300/10 bg-white/10 p-3 backdrop-blur-2xl sm:p-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${currentUserGradient} border border-white/20 text-white font-bold shadow-md sm:flex`}
-              >
-                {getAvatarLetter(username)}
-              </div>
-
-              <div className="relative flex-1">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder={`Message as ${username}...`}
-                  value={text}
-                  onChange={(e) => handleTypingChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") sendMessage();
-                  }}
-                  className="w-full rounded-full border border-white/10 bg-white/10 py-3 pl-4 pr-14 text-white outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500"
-                />
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.94 }}
-                  onClick={sendMessage}
-                  className="absolute right-1.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-linear-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.25)] transition hover:from-cyan-400 hover:to-blue-500"
-                >
-                  <Send size={18} />
-                </motion.button>
-              </div>
-            </div>
-
-            <div className="mt-3 flex justify-end sm:hidden">
-              <button
-                onClick={handleChangeUser}
-                className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/15"
-              >
-                Change User
-              </button>
-            </div>
-          </div>
-        )}
-      </motion.div>
-    </div>
+        </motion.div>
+      </div>
+    </>
   );
 }
