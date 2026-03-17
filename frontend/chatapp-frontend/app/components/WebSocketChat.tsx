@@ -91,7 +91,7 @@ export default function WebSocketChat() {
   }, []);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://127.0.0.1:8000/ws/chat/");
+    const ws = new WebSocket("wss://real-time-chat-application2-yxtc.onrender.com/ws/chat/");
     socketRef.current = ws;
 
     ws.onopen = () => {
@@ -228,7 +228,7 @@ export default function WebSocketChat() {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/messages/", {
+        const res = await fetch("https://real-time-chat-application2-yxtc.onrender.com/api/messages/", {
           cache: "no-store",
         });
 
