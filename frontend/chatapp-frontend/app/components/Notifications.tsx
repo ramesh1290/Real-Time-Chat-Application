@@ -3,13 +3,13 @@
 import { useEffect, useRef } from "react";
 
 type NotificationsProps = {
-  playSend: boolean;
-  playReceive: boolean;
+  sendTrigger: number;
+  receiveTrigger: number;
 };
 
 export default function Notifications({
-  playSend,
-  playReceive,
+  sendTrigger,
+  receiveTrigger,
 }: NotificationsProps) {
   const sendAudioRef = useRef<HTMLAudioElement | null>(null);
   const receiveAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -23,22 +23,22 @@ export default function Notifications({
   }, []);
 
   useEffect(() => {
-    if (!playSend || !sendAudioRef.current) return;
+    if (sendTrigger === 0 || !sendAudioRef.current) return;
 
     sendAudioRef.current.currentTime = 0;
     sendAudioRef.current.play().catch((err) => {
       console.log("Send sound blocked:", err);
     });
-  }, [playSend]);
+  }, [sendTrigger]);
 
   useEffect(() => {
-    if (!playReceive || !receiveAudioRef.current) return;
+    if (receiveTrigger === 0 || !receiveAudioRef.current) return;
 
     receiveAudioRef.current.currentTime = 0;
     receiveAudioRef.current.play().catch((err) => {
       console.log("Receive sound blocked:", err);
     });
-  }, [playReceive]);
+  }, [receiveTrigger]);
 
   return null;
 }

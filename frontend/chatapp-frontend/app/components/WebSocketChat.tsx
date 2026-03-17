@@ -74,8 +74,8 @@ export default function WebSocketChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connected, setConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const [playSend, setPlaySend] = useState(false);
-  const [playReceive, setPlayReceive] = useState(false);
+  const [sendTrigger, setSendTrigger] = useState(0);
+  const [receiveTrigger, setReceiveTrigger] = useState(0);
 
   const socketRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -91,7 +91,7 @@ export default function WebSocketChat() {
   }, []);
 
   useEffect(() => {
-    const ws = new WebSocket("wss://real-time-chat-application2-yxtc.onrender.com/ws/chat/");
+    const ws = new WebSocket("ws://127.0.0.1:8000/ws/chat/");
     socketRef.current = ws;
 
     ws.onopen = () => {
@@ -181,8 +181,7 @@ export default function WebSocketChat() {
         chatData.username.trim().toLowerCase() !== username.trim().toLowerCase();
 
       if (isOtherUserMessage) {
-        setPlayReceive(false);
-        setTimeout(() => setPlayReceive(true), 0);
+        setReceiveTrigger((prev) => prev + 1);
       }
 
       if (
@@ -228,7 +227,7 @@ export default function WebSocketChat() {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await fetch("https://real-time-chat-application2-yxtc.onrender.com/api/messages/", {
+        const res = await fetch("http://127.0.0.1:8000/api/messages/", {
           cache: "no-store",
         });
 
@@ -349,8 +348,7 @@ export default function WebSocketChat() {
       })
     );
 
-    setPlaySend(false);
-    setTimeout(() => setPlaySend(true), 0);
+    setSendTrigger((prev) => prev + 1);
 
     sendTypingEvent(false);
     setText("");
@@ -384,7 +382,10 @@ export default function WebSocketChat() {
 
   return (
     <>
-      <Notifications playSend={playSend} playReceive={playReceive} />
+      <Notifications
+        sendTrigger={sendTrigger}
+        receiveTrigger={receiveTrigger}
+      />
 
       <div className="min-h-screen w-full bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_45%,#000000_100%)] flex items-center justify-center px-3 py-4 sm:px-6 sm:py-6">
         <motion.div
