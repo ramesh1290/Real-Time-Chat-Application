@@ -28,6 +28,7 @@ type ChatMessage = {
   id: number;
   username: string;
   text: string;
+  gif_url?: string | null;
   created_at: string;
   receipts?: Receipt[];
   reactions?: MessageReaction[];
@@ -39,6 +40,7 @@ type IncomingSocketMessage =
       id: number;
       username: string;
       text: string;
+      gif_url?: string | null;
       created_at: string;
     }
   | {
@@ -53,10 +55,10 @@ type IncomingSocketMessage =
       status: "delivered" | "seen";
     }
   | {
+      // FIX: backend now sends full reactions array
       type: "reaction_update";
       message_id: number;
-      username: string;
-      emoji: EmojiReaction;
+      reactions: MessageReaction[];
     };
 
 function getAvatarLetter(name: string) {
@@ -91,9 +93,8 @@ export default function WebSocketChat() {
   const [sendTrigger, setSendTrigger] = useState(0);
   const [receiveTrigger, setReceiveTrigger] = useState(0);
 
-  // NEW: reaction state by message id
   const [messageReactions, setMessageReactions] = useState<
-    Record<number, { emoji: EmojiReaction; username: string }[]>
+    Record<number, MessageReaction[]>
   >({});
 
   const socketRef = useRef<WebSocket | null>(null);
@@ -141,14 +142,18 @@ export default function WebSocketChat() {
 
             const currentReceipts = msg.receipts || [];
             const existingReceipt = currentReceipts.find(
-              (receipt) => receipt.username.toLowerCase() === data.username.toLowerCase()
+              (receipt) =>
+                receipt.username.toLowerCase() === data.username.toLowerCase()
             );
 
             let updatedReceipts: Receipt[];
 
             if (existingReceipt) {
               updatedReceipts = currentReceipts.map((receipt) => {
-                if (receipt.username.toLowerCase() !== data.username.toLowerCase()) {
+                if (
+                  receipt.username.toLowerCase() !==
+                  data.username.toLowerCase()
+                ) {
                   return receipt;
                 }
 
@@ -180,27 +185,12 @@ export default function WebSocketChat() {
         return;
       }
 
-      // NEW: handle live reaction switching
+      // FIX: replace whole reactions array for that message
       if (data.type === "reaction_update") {
-        setMessageReactions((prev) => {
-          const current = prev[data.message_id] || [];
-
-          // remove this user's old reaction first
-          const filtered = current.filter(
-            (reaction) => reaction.username !== data.username
-          );
-
-          return {
-            ...prev,
-            [data.message_id]: [
-              ...filtered,
-              {
-                emoji: data.emoji,
-                username: data.username,
-              },
-            ],
-          };
-        });
+        setMessageReactions((prev) => ({
+          ...prev,
+          [data.message_id]: data.reactions,
+        }));
         return;
       }
 
@@ -208,6 +198,7 @@ export default function WebSocketChat() {
         id: data.id,
         username: data.username,
         text: data.text,
+        gif_url: data.gif_url,
         created_at: data.created_at,
         receipts: [],
         reactions: [],
@@ -219,10 +210,13 @@ export default function WebSocketChat() {
         return [...prev, chatData];
       });
 
-      setTypingUsers((prev) => prev.filter((user) => user !== chatData.username));
+      setTypingUsers((prev) =>
+        prev.filter((user) => user !== chatData.username)
+      );
 
       const isOtherUserMessage =
-        chatData.username.trim().toLowerCase() !== username.trim().toLowerCase();
+        chatData.username.trim().toLowerCase() !==
+        username.trim().toLowerCase();
 
       if (isOtherUserMessage) {
         setReceiveTrigger((prev) => prev + 1);
@@ -282,17 +276,10 @@ export default function WebSocketChat() {
         const data: ChatMessage[] = await res.json();
         setMessages(data);
 
-        // NEW: load reactions from DB
-        const reactionsMap: Record<number, { emoji: EmojiReaction; username: string }[]> = {};
-
+        const reactionsMap: Record<number, MessageReaction[]> = {};
         data.forEach((msg) => {
-          reactionsMap[msg.id] =
-            msg.reactions?.map((reaction) => ({
-              emoji: reaction.emoji,
-              username: reaction.username,
-            })) || [];
+          reactionsMap[msg.id] = msg.reactions || [];
         });
-
         setMessageReactions(reactionsMap);
       } catch (err) {
         console.error(err);
@@ -309,12 +296,14 @@ export default function WebSocketChat() {
   useEffect(() => {
     const handleVisibilitySeen = () => {
       if (document.visibilityState !== "visible") return;
-      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
+      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN)
+        return;
       if (!username.trim()) return;
 
       messages.forEach((msg) => {
         const isOtherUserMessage =
-          msg.username.trim().toLowerCase() !== username.trim().toLowerCase();
+          msg.username.trim().toLowerCase() !==
+          username.trim().toLowerCase();
 
         if (!isOtherUserMessage) return;
 
@@ -412,7 +401,6 @@ export default function WebSocketChat() {
     inputRef.current?.focus();
   };
 
-  // NEW: send reaction to backend
   const handleReactionSend = (messageId: number, emoji: EmojiReaction) => {
     if (!socketRef.current) return;
     if (socketRef.current.readyState !== WebSocket.OPEN) return;
@@ -632,9 +620,19 @@ export default function WebSocketChat() {
                               </span>
                             </div>
 
-                            <p className="wrap-break-wordwordword text-sm leading-relaxed sm:text-[15px]">
-                              {msg.text}
-                            </p>
+                            {msg.text && (
+                              <p className="wrap-break-wordwordword text-sm leading-relaxed sm:text-[15px]">
+                                {msg.text}
+                              </p>
+                            )}
+
+                            {msg.gif_url && (
+                              <img
+                                src={msg.gif_url}
+                                alt="gif message"
+                                className="mt-2 rounded-xl max-w-full sm:max-w-xs"
+                              />
+                            )}
 
                             {messageReactions[msg.id] &&
                               messageReactions[msg.id].length > 0 && (

@@ -87,7 +87,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
             return
 
-        # NEW: handle emoji reaction safely
+        # reaction change
         if message_type == "reaction":
             message_id = data.get("message_id")
             username = data.get("username")
@@ -97,22 +97,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 return
 
             try:
-                reaction = await self.save_or_update_reaction(
+                message = await self.save_or_update_reaction(
                     message_id,
                     username,
                     emoji
                 )
 
-                if not reaction:
+                if not message:
                     return
+
+                reactions = await self.get_message_reactions(message.id)
 
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
                         "type": "reaction_update",
-                        "message_id": reaction.message.id,
-                        "username": reaction.username,
-                        "emoji": reaction.emoji,
+                        "message_id": message.id,
+                        "reactions": reactions,
                     }
                 )
             except Exception as e:
@@ -164,13 +165,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "status": event["status"],
         }))
 
-    # NEW: send reaction update to all users
     async def reaction_update(self, event):
         await self.send(text_data=json.dumps({
             "type": "reaction_update",
             "message_id": event["message_id"],
-            "username": event["username"],
-            "emoji": event["emoji"],
+            "reactions": event["reactions"],
         }))
 
     @sync_to_async
@@ -201,7 +200,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         return receipt
 
-    # NEW: safely switch one user's reaction on one message
     @sync_to_async
     def save_or_update_reaction(self, message_id, username, emoji):
         try:
@@ -209,28 +207,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Message.DoesNotExist:
             return None
 
-        # cleanup old duplicates if any old bad data exists
-        duplicates = MessageReaction.objects.filter(
-            message=message,
-            username=username
-        )
-
-        if duplicates.count() > 1:
-            first = duplicates.first()
-            duplicates.exclude(id=first.id).delete()
-
-        reaction = MessageReaction.objects.filter(
-            message=message,
-            username=username
-        ).first()
-
-        if reaction:
-            reaction.emoji = emoji
-            reaction.save()
-            return reaction
-
-        return MessageReaction.objects.create(
+        reaction, created = MessageReaction.objects.update_or_create(
             message=message,
             username=username,
-            emoji=emoji
+            defaults={"emoji": emoji},
         )
+
+        return message
+
+    @sync_to_async
+    def get_message_reactions(self, message_id):
+        reactions = MessageReaction.objects.filter(
+            message_id=message_id
+        ).order_by("created_at")
+
+        return [
+            {
+                "username": reaction.username,
+                "emoji": reaction.emoji,
+                "created_at": reaction.created_at.isoformat(),
+            }
+            for reaction in reactions
+        ]
