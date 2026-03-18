@@ -10,11 +10,18 @@ import {
   PencilLine,
 } from "lucide-react";
 import Notifications from "./Notifications";
+import Emoji, { type EmojiReaction } from "./Emoji";
 
 type Receipt = {
   username: string;
   status: "delivered" | "seen";
   updated_at?: string;
+};
+
+type MessageReaction = {
+  username: string;
+  emoji: EmojiReaction;
+  created_at?: string;
 };
 
 type ChatMessage = {
@@ -23,6 +30,7 @@ type ChatMessage = {
   text: string;
   created_at: string;
   receipts?: Receipt[];
+  reactions?: MessageReaction[];
 };
 
 type IncomingSocketMessage =
@@ -43,6 +51,12 @@ type IncomingSocketMessage =
       message_id: number;
       username: string;
       status: "delivered" | "seen";
+    }
+  | {
+      type: "reaction_update";
+      message_id: number;
+      username: string;
+      emoji: EmojiReaction;
     };
 
 function getAvatarLetter(name: string) {
@@ -76,6 +90,11 @@ export default function WebSocketChat() {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [sendTrigger, setSendTrigger] = useState(0);
   const [receiveTrigger, setReceiveTrigger] = useState(0);
+
+  // NEW: reaction state by message id
+  const [messageReactions, setMessageReactions] = useState<
+    Record<number, { emoji: EmojiReaction; username: string }[]>
+  >({});
 
   const socketRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -161,12 +180,37 @@ export default function WebSocketChat() {
         return;
       }
 
+      // NEW: handle live reaction switching
+      if (data.type === "reaction_update") {
+        setMessageReactions((prev) => {
+          const current = prev[data.message_id] || [];
+
+          // remove this user's old reaction first
+          const filtered = current.filter(
+            (reaction) => reaction.username !== data.username
+          );
+
+          return {
+            ...prev,
+            [data.message_id]: [
+              ...filtered,
+              {
+                emoji: data.emoji,
+                username: data.username,
+              },
+            ],
+          };
+        });
+        return;
+      }
+
       const chatData: ChatMessage = {
         id: data.id,
         username: data.username,
         text: data.text,
         created_at: data.created_at,
         receipts: [],
+        reactions: [],
       };
 
       setMessages((prev) => {
@@ -237,6 +281,19 @@ export default function WebSocketChat() {
 
         const data: ChatMessage[] = await res.json();
         setMessages(data);
+
+        // NEW: load reactions from DB
+        const reactionsMap: Record<number, { emoji: EmojiReaction; username: string }[]> = {};
+
+        data.forEach((msg) => {
+          reactionsMap[msg.id] =
+            msg.reactions?.map((reaction) => ({
+              emoji: reaction.emoji,
+              username: reaction.username,
+            })) || [];
+        });
+
+        setMessageReactions(reactionsMap);
       } catch (err) {
         console.error(err);
       }
@@ -247,7 +304,7 @@ export default function WebSocketChat() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typingUsers]);
+  }, [messages, typingUsers, messageReactions]);
 
   useEffect(() => {
     const handleVisibilitySeen = () => {
@@ -353,6 +410,22 @@ export default function WebSocketChat() {
     sendTypingEvent(false);
     setText("");
     inputRef.current?.focus();
+  };
+
+  // NEW: send reaction to backend
+  const handleReactionSend = (messageId: number, emoji: EmojiReaction) => {
+    if (!socketRef.current) return;
+    if (socketRef.current.readyState !== WebSocket.OPEN) return;
+    if (!username.trim()) return;
+
+    socketRef.current.send(
+      JSON.stringify({
+        type: "reaction",
+        message_id: messageId,
+        username,
+        emoji,
+      })
+    );
   };
 
   const typingText =
@@ -527,6 +600,13 @@ export default function WebSocketChat() {
                           </div>
                         )}
 
+                        {!isOwnMessage && (
+                          <Emoji
+                            isOwnMessage={false}
+                            onReact={(emoji) => handleReactionSend(msg.id, emoji)}
+                          />
+                        )}
+
                         <div
                           className={`relative max-w-[84%] rounded-[22px] border px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:scale-[1.01] sm:max-w-[68%] ${
                             isOwnMessage
@@ -556,6 +636,21 @@ export default function WebSocketChat() {
                               {msg.text}
                             </p>
 
+                            {messageReactions[msg.id] &&
+                              messageReactions[msg.id].length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                  {messageReactions[msg.id].map((reaction, i) => (
+                                    <span
+                                      key={`${msg.id}-${reaction.username}-${i}`}
+                                      className="rounded-full bg-white/10 px-2 py-0.5 text-sm"
+                                      title={reaction.username}
+                                    >
+                                      {reaction.emoji}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
                             <div className="mt-2 flex justify-end">
                               <p
                                 className={`text-[10px] sm:text-[11px] ${
@@ -570,6 +665,13 @@ export default function WebSocketChat() {
                             </div>
                           </div>
                         </div>
+
+                        {isOwnMessage && (
+                          <Emoji
+                            isOwnMessage={true}
+                            onReact={(emoji) => handleReactionSend(msg.id, emoji)}
+                          />
+                        )}
 
                         {isOwnMessage && (
                           <div

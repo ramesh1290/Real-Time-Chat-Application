@@ -27,3 +27,32 @@ class MessageReceipt(models.Model):
 
     def __str__(self):
         return f"{self.username} - {self.message.id} - {self.status}"
+# NEW: stores emoji reactions in DB
+class MessageReaction(models.Model):
+    EMOJI_CHOICES = [
+        ("❤️", "Heart"),
+        ("😂", "Laugh"),
+        ("🔥", "Fire"),
+        ("😮", "Wow"),
+        ("😢", "Sad"),
+        ("👍", "Like"),
+    ]
+
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name="reactions"
+    )
+    username = models.CharField(max_length=100)
+    emoji = models.CharField(max_length=10, choices=EMOJI_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # one user = one reaction per message
+        unique_together = ("message", "username")
+
+    def __str__(self):
+        return f"{self.username} reacted {self.emoji} on message {self.message_id}"
+
+
+        
