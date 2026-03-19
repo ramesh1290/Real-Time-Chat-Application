@@ -87,7 +87,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
             return
 
-        # reaction change
         if message_type == "reaction":
             message_id = data.get("message_id")
             username = data.get("username")
@@ -123,11 +122,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         username = data.get("username")
         text = data.get("text")
+        gif_url = data.get("gif_url")
 
-        if not username or not text:
+        if not username:
             return
 
-        message = await self.save_message(username, text)
+        if (not text or not str(text).strip()) and not gif_url:
+            return
+
+        message = await self.save_message(username, text, gif_url)
 
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -137,6 +140,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "id": message.id,
                 "username": message.username,
                 "text": message.text,
+                "gif_url": message.gif_url,
                 "created_at": message.created_at.isoformat(),
             }
         )
@@ -147,6 +151,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "id": event["id"],
             "username": event["username"],
             "text": event["text"],
+            "gif_url": event.get("gif_url"),
             "created_at": event["created_at"],
         }))
 
@@ -173,8 +178,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
 
     @sync_to_async
-    def save_message(self, username, text):
-        return Message.objects.create(username=username, text=text)
+    def save_message(self, username, text=None, gif_url=None):
+        return Message.objects.create(
+            username=username,
+            text=text or "",
+            gif_url=gif_url
+        )
 
     @sync_to_async
     def update_receipt(self, message_id, username, status):
@@ -207,7 +216,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Message.DoesNotExist:
             return None
 
-        reaction, created = MessageReaction.objects.update_or_create(
+        MessageReaction.objects.update_or_create(
             message=message,
             username=username,
             defaults={"emoji": emoji},

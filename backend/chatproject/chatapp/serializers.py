@@ -8,7 +8,6 @@ class MessageReceiptSerializer(serializers.ModelSerializer):
         fields = ["username", "status", "updated_at"]
 
 
-# NEW: serializer for reactions
 class MessageReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageReaction
@@ -17,7 +16,7 @@ class MessageReactionSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     receipts = MessageReceiptSerializer(many=True, read_only=True)
-    reactions = MessageReactionSerializer(many=True, read_only=True)  # NEW
+    reactions = MessageReactionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Message
@@ -25,6 +24,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "id",
             "username",
             "text",
+            "gif_url",
             "created_at",
             "receipts",
             "reactions",

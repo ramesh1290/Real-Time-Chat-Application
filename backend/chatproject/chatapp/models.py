@@ -1,17 +1,21 @@
 from django.db import models
 
+
 class Message(models.Model):
     username = models.CharField(max_length=100)
-    text = models.TextField()
+    text = models.TextField(blank=True, null=True)
+    gif_url = models.URLField(blank=True, null=True)  # NEW: gif support
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.username}: {self.text[:20]}"
+        return f"{self.username}: {self.text or 'GIF'}"
+
+
 class MessageReceipt(models.Model):
-    STATUS_CHOICES = (
+    STATUS_CHOICES = [
         ("delivered", "Delivered"),
         ("seen", "Seen"),
-    )
+    ]
 
     message = models.ForeignKey(
         Message,
@@ -19,15 +23,16 @@ class MessageReceipt(models.Model):
         related_name="receipts"
     )
     username = models.CharField(max_length=100)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="delivered")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("message", "username")
 
     def __str__(self):
-        return f"{self.username} - {self.message.id} - {self.status}"
-# NEW: stores emoji reactions in DB
+        return f"{self.username} - {self.status}"
+
+
 class MessageReaction(models.Model):
     EMOJI_CHOICES = [
         ("❤️", "Heart"),
@@ -48,11 +53,7 @@ class MessageReaction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # one user = one reaction per message
         unique_together = ("message", "username")
 
     def __str__(self):
         return f"{self.username} reacted {self.emoji} on message {self.message_id}"
-
-
-        

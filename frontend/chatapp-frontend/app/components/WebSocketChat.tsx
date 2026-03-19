@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Notifications from "./Notifications";
 import Emoji, { type EmojiReaction } from "./Emoji";
+import GIF from "./GIF";
 
 type Receipt = {
   username: string;
@@ -55,7 +56,6 @@ type IncomingSocketMessage =
       status: "delivered" | "seen";
     }
   | {
-      // FIX: backend now sends full reactions array
       type: "reaction_update";
       message_id: number;
       reactions: MessageReaction[];
@@ -92,7 +92,6 @@ export default function WebSocketChat() {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [sendTrigger, setSendTrigger] = useState(0);
   const [receiveTrigger, setReceiveTrigger] = useState(0);
-
   const [messageReactions, setMessageReactions] = useState<
     Record<number, MessageReaction[]>
   >({});
@@ -185,7 +184,6 @@ export default function WebSocketChat() {
         return;
       }
 
-      // FIX: replace whole reactions array for that message
       if (data.type === "reaction_update") {
         setMessageReactions((prev) => ({
           ...prev,
@@ -210,13 +208,10 @@ export default function WebSocketChat() {
         return [...prev, chatData];
       });
 
-      setTypingUsers((prev) =>
-        prev.filter((user) => user !== chatData.username)
-      );
+      setTypingUsers((prev) => prev.filter((user) => user !== chatData.username));
 
       const isOtherUserMessage =
-        chatData.username.trim().toLowerCase() !==
-        username.trim().toLowerCase();
+        chatData.username.trim().toLowerCase() !== username.trim().toLowerCase();
 
       if (isOtherUserMessage) {
         setReceiveTrigger((prev) => prev + 1);
@@ -296,14 +291,12 @@ export default function WebSocketChat() {
   useEffect(() => {
     const handleVisibilitySeen = () => {
       if (document.visibilityState !== "visible") return;
-      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN)
-        return;
+      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
       if (!username.trim()) return;
 
       messages.forEach((msg) => {
         const isOtherUserMessage =
-          msg.username.trim().toLowerCase() !==
-          username.trim().toLowerCase();
+          msg.username.trim().toLowerCase() !== username.trim().toLowerCase();
 
         if (!isOtherUserMessage) return;
 
@@ -398,6 +391,23 @@ export default function WebSocketChat() {
 
     sendTypingEvent(false);
     setText("");
+    inputRef.current?.focus();
+  };
+
+  const sendGifMessage = (gifUrl: string) => {
+    if (!socketRef.current) return;
+    if (socketRef.current.readyState !== WebSocket.OPEN) return;
+    if (!username.trim()) return;
+
+    socketRef.current.send(
+      JSON.stringify({
+        type: "chat",
+        username,
+        gif_url: gifUrl,
+      })
+    );
+
+    setSendTrigger((prev) => prev + 1);
     inputRef.current?.focus();
   };
 
@@ -630,7 +640,7 @@ export default function WebSocketChat() {
                               <img
                                 src={msg.gif_url}
                                 alt="gif message"
-                                className="mt-2 rounded-xl max-w-full sm:max-w-xs"
+                                className="mt-2 rounded-xl max-w-full sm:max-w-55"
                               />
                             )}
 
@@ -750,6 +760,11 @@ export default function WebSocketChat() {
                 >
                   {getAvatarLetter(username)}
                 </div>
+                <div className="relative">
+                   <GIF onSelect={sendGifMessage} />
+                </div>
+
+              
 
                 <div className="relative flex-1">
                   <input
@@ -773,8 +788,9 @@ export default function WebSocketChat() {
                     <Send size={18} />
                   </motion.button>
                 </div>
+               
               </div>
-
+  
               <div className="mt-3 flex justify-end sm:hidden">
                 <button
                   onClick={handleChangeUser}
