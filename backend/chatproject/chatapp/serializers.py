@@ -17,7 +17,7 @@ class MessageReactionSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     receipts = MessageReceiptSerializer(many=True, read_only=True)
     reactions = MessageReactionSerializer(many=True, read_only=True)
-    voice_url = serializers.SerializerMethodField()  # NEW
+    voice_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -26,7 +26,6 @@ class MessageSerializer(serializers.ModelSerializer):
             "username",
             "text",
             "gif_url",
-            "voice",
             "voice_url",
             "created_at",
             "receipts",

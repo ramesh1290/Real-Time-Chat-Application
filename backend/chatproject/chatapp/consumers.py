@@ -13,7 +13,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
-
         await self.accept()
 
     async def disconnect(self, close_code):
@@ -23,120 +22,128 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
+        try:
+            data = json.loads(text_data)
+        except json.JSONDecodeError:
+            return
+
         message_type = data.get("type", "chat")
 
         if message_type == "typing":
-            username = data.get("username")
-            is_typing = data.get("isTyping", False)
-
-            if not username:
-                return
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "typing_status",
-                    "username": username,
-                    "isTyping": is_typing,
-                }
-            )
+            await self.handle_typing(data)
             return
 
         if message_type == "delivered":
-            message_id = data.get("message_id")
-            username = data.get("username")
-
-            if not message_id or not username:
-                return
-
-            receipt = await self.update_receipt(message_id, username, "delivered")
-            if not receipt:
-                return
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "receipt_update",
-                    "message_id": message_id,
-                    "username": username,
-                    "status": "delivered",
-                }
-            )
+            await self.handle_receipt(data, "delivered")
             return
 
         if message_type == "seen":
-            message_id = data.get("message_id")
-            username = data.get("username")
-
-            if not message_id or not username:
-                return
-
-            receipt = await self.update_receipt(message_id, username, "seen")
-            if not receipt:
-                return
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "receipt_update",
-                    "message_id": message_id,
-                    "username": username,
-                    "status": "seen",
-                }
-            )
+            await self.handle_receipt(data, "seen")
             return
 
         if message_type == "reaction":
-            message_id = data.get("message_id")
-            username = data.get("username")
-            emoji = data.get("emoji")
-
-            if not message_id or not username or not emoji:
-                return
-
-            try:
-                message = await self.save_or_update_reaction(
-                    message_id,
-                    username,
-                    emoji
-                )
-
-                if not message:
-                    return
-
-                reactions = await self.get_message_reactions(message.id)
-
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        "type": "reaction_update",
-                        "message_id": message.id,
-                        "reactions": reactions,
-                    }
-                )
-            except Exception as e:
-                print("Reaction error:", e)
-
+            await self.handle_reaction(data)
             return
 
-        # NEW: broadcast uploaded voice message
         if message_type == "voice":
+            await self.handle_voice(data)
+            return
+
+        if message_type == "chat":
+            await self.handle_chat(data)
+            return
+
+    async def handle_typing(self, data):
+        username = data.get("username")
+        is_typing = data.get("isTyping", False)
+
+        if not username:
+            return
+
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                "type": "typing_status",
+                "username": username,
+                "isTyping": is_typing,
+            }
+        )
+
+    async def handle_receipt(self, data, receipt_status):
+        message_id = data.get("message_id")
+        username = data.get("username")
+
+        if not message_id or not username:
+            return
+
+        receipt = await self.update_receipt(message_id, username, receipt_status)
+        if not receipt:
+            return
+
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                "type": "receipt_update",
+                "message_id": message_id,
+                "username": username,
+                "status": receipt_status,
+            }
+        )
+
+    async def handle_reaction(self, data):
+        message_id = data.get("message_id")
+        username = data.get("username")
+        emoji = data.get("emoji")
+
+        if not message_id or not username or not emoji:
+            return
+
+        try:
+            message = await self.save_or_update_reaction(
+                message_id,
+                username,
+                emoji
+            )
+            if not message:
+                return
+
+            reactions = await self.get_message_reactions(message.id)
+
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
-                    "type": "chat_message",
-                    "message_type": "chat",
-                    "id": data["id"],
-                    "username": data["username"],
-                    "text": "",
-                    "gif_url": None,
-                    "voice_url": data.get("voice_url"),
-                    "created_at": data["created_at"],
+                    "type": "reaction_update",
+                    "message_id": message.id,
+                    "reactions": reactions,
                 }
             )
+        except Exception as e:
+            print("Reaction error:", e)
+
+    async def handle_voice(self, data):
+        message_id = data.get("id")
+        username = data.get("username")
+        voice_url = data.get("voice_url")
+        created_at = data.get("created_at")
+
+        if not message_id or not username or not voice_url or not created_at:
             return
 
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                "type": "chat_message",
+                "message_type": "voice",
+                "id": message_id,
+                "username": username,
+                "text": "",
+                "gif_url": None,
+                "voice_url": voice_url,
+                "created_at": created_at,
+            }
+        )
+
+    async def handle_chat(self, data):
         username = data.get("username")
         text = data.get("text")
         gif_url = data.get("gif_url")
@@ -144,10 +151,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if not username:
             return
 
-        if (not text or not str(text).strip()) and not gif_url:
+        has_text = bool(text and str(text).strip())
+        has_gif = bool(gif_url)
+
+        if not has_text and not has_gif:
             return
 
-        message = await self.save_message(username, text, gif_url)
+        message = await self.save_message(
+            username=username,
+            text=text if has_text else "",
+            gif_url=gif_url if has_gif else None
+        )
 
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -168,7 +182,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "type": event.get("message_type", "chat"),
             "id": event["id"],
             "username": event["username"],
-            "text": event.get("text"),
+            "text": event.get("text", ""),
             "gif_url": event.get("gif_url"),
             "voice_url": event.get("voice_url"),
             "created_at": event["created_at"],
@@ -197,10 +211,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
 
     @sync_to_async
-    def save_message(self, username, text=None, gif_url=None):
+    def save_message(self, username, text="", gif_url=None):
         return Message.objects.create(
             username=username,
-            text=text or "",
+            text=text,
             gif_url=gif_url
         )
 

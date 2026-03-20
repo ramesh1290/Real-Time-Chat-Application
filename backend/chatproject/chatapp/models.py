@@ -5,7 +5,7 @@ class Message(models.Model):
     username = models.CharField(max_length=100)
     text = models.TextField(blank=True, null=True)
     gif_url = models.URLField(blank=True, null=True)
-    voice = models.FileField(upload_to="voice_messages/", blank=True, null=True)  # NEW
+    voice = models.FileField(upload_to="voice_messages/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -39,30 +39,30 @@ type ChatMessage = {
 
 type IncomingSocketMessage =
   | {
-    type?: "chat";
-    id: number;
-    username: string;
-    text: string;
-    gif_url?: string | null;
-    voice_url?: string | null;
-    created_at: string;
-  }
+      type?: "chat" | "voice";
+      id: number;
+      username: string;
+      text?: string;
+      gif_url?: string | null;
+      voice_url?: string | null;
+      created_at: string;
+    }
   | {
-    type: "typing";
-    username: string;
-    isTyping: boolean;
-  }
+      type: "typing";
+      username: string;
+      isTyping: boolean;
+    }
   | {
-    type: "receipt_update";
-    message_id: number;
-    username: string;
-    status: "delivered" | "seen";
-  }
+      type: "receipt_update";
+      message_id: number;
+      username: string;
+      status: "delivered" | "seen";
+    }
   | {
-    type: "reaction_update";
-    message_id: number;
-    reactions: MessageReaction[];
-  };
+      type: "reaction_update";
+      message_id: number;
+      reactions: MessageReaction[];
+    };
 
 function getAvatarLetter(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
@@ -102,7 +102,7 @@ export default function WebSocketChat() {
   const socketRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const savedUsername = localStorage.getItem("chat_username");
@@ -198,9 +198,9 @@ export default function WebSocketChat() {
       const chatData: ChatMessage = {
         id: data.id,
         username: data.username,
-        text: data.text,
-        gif_url: data.gif_url,
-        voice_url: data.voice_url,
+        text: data.text || "",
+        gif_url: data.gif_url || null,
+        voice_url: data.voice_url || null,
         created_at: data.created_at,
         receipts: [],
         reactions: [],
@@ -212,7 +212,9 @@ export default function WebSocketChat() {
         return [...prev, chatData];
       });
 
-      setTypingUsers((prev) => prev.filter((user) => user !== chatData.username));
+      setTypingUsers((prev) =>
+        prev.filter((user) => user !== chatData.username)
+      );
 
       const isOtherUserMessage =
         chatData.username.trim().toLowerCase() !== username.trim().toLowerCase();
@@ -295,7 +297,8 @@ export default function WebSocketChat() {
   useEffect(() => {
     const handleVisibilitySeen = () => {
       if (document.visibilityState !== "visible") return;
-      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
+      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN)
+        return;
       if (!username.trim()) return;
 
       messages.forEach((msg) => {
@@ -456,8 +459,8 @@ export default function WebSocketChat() {
     typingUsers.length === 1
       ? `${typingUsers[0]} is typing...`
       : typingUsers.length > 1
-        ? `${typingUsers.join(", ")} are typing...`
-        : "";
+      ? `${typingUsers.join(", ")} are typing...`
+      : "";
 
   const getOwnMessageStatus = (msg: ChatMessage) => {
     if (msg.username.trim().toLowerCase() !== username.trim().toLowerCase()) {
@@ -534,10 +537,11 @@ export default function WebSocketChat() {
                 <motion.div
                   animate={{ scale: connected ? [1, 1.05, 1] : 1 }}
                   transition={{ duration: 0.35 }}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm ${connected
-                    ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-400"
-                    : "border-rose-400/30 bg-rose-500/15 text-rose-400"
-                    }`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm ${
+                    connected
+                      ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-400"
+                      : "border-rose-400/30 bg-rose-500/15 text-rose-400"
+                  }`}
                 >
                   {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
                   {connected ? "Connected" : "Disconnected"}
@@ -601,6 +605,8 @@ export default function WebSocketChat() {
                     const isOwnMessage =
                       msg.username.toLowerCase() === username.toLowerCase();
                     const avatarGradient = getAvatarGradient(msg.username);
+                    const hasOnlyVoice =
+                      !!msg.voice_url && !msg.text && !msg.gif_url;
 
                     return (
                       <motion.div
@@ -611,8 +617,9 @@ export default function WebSocketChat() {
                           duration: 0.22,
                           delay: Math.min(index * 0.015, 0.12),
                         }}
-                        className={`flex items-end gap-2 ${isOwnMessage ? "justify-end" : "justify-start"
-                          }`}
+                        className={`flex items-end gap-2 ${
+                          isOwnMessage ? "justify-end" : "justify-start"
+                        }`}
                       >
                         {!isOwnMessage && (
                           <div
@@ -630,10 +637,15 @@ export default function WebSocketChat() {
                         )}
 
                         <div
-                          className={`relative max-w-[84%] rounded-[22px] border px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:scale-[1.01] sm:max-w-[68%] ${isOwnMessage
-                            ? "rounded-br-md border-cyan-200/20 bg-linear-to-bran-500 to-blue-600 text-white"
-                            : "rounded-bl-md border-white/10 bg-white/10 text-slate-100 backdrop-blur-xl"
-                            }`}
+                          className={`relative rounded-[22px] border px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:scale-[1.01] ${
+                            !isOwnMessage && hasOnlyVoice
+                              ? "max-w-[320px] sm:max-w-85"
+                              : "max-w-[84%] sm:max-w-[68%]"
+                          } ${
+                            isOwnMessage
+                              ? "rounded-br-md border-cyan-200/20 bg-linear-to-bran-500 to-blue-600 text-white"
+                              : "rounded-bl-md border-white/10 bg-white/10 text-slate-100 backdrop-blur-xl"
+                          }`}
                         >
                           {!isOwnMessage && (
                             <span className="absolute -left-1 bottom-0 h-4 w-4 rotate-45 rounded-sm border-l border-b border-white/10 bg-white/10 backdrop-blur-xl" />
@@ -645,8 +657,9 @@ export default function WebSocketChat() {
                           <div className="relative z-10">
                             <div className="mb-1 flex items-center justify-between gap-3">
                               <span
-                                className={`text-sm font-bold ${isOwnMessage ? "text-cyan-50" : "text-cyan-300"
-                                  }`}
+                                className={`text-sm font-bold ${
+                                  isOwnMessage ? "text-cyan-50" : "text-cyan-300"
+                                }`}
                               >
                                 {isOwnMessage ? "You" : msg.username}
                               </span>
@@ -666,34 +679,39 @@ export default function WebSocketChat() {
                               />
                             )}
 
-                            {/* {msg.voice_url && (
-                              <audio
-                                controls
-                                src={msg.voice_url}
-                                className="mt-2 w-full max-w-[260px]"
-                              />
-                            )} */}
-                            {msg.voice_url && (
-                              <audio
-                                controls
-                                preload="metadata"
-                                className="mt-2 w-full max-w-65"
-                              >
-                                <source src={msg.voice_url} type="audio/webm" />
-                                <source src={msg.voice_url} type="audio/mp4" />
-                                Your browser does not support audio playback.
-                              </audio>
-                            )}
-                            {/* {msg.voice_url && (
-                              <audio
-                                controls
-                                preload="metadata"
-                                src={msg.voice_url}
-                                className="mt-2 w-full max-w-[260px]"
-                              >
-                                Your browser does not support audio playback.
-                              </audio>
-                            )} */}
+                            {msg.voice_url &&
+                              (isOwnMessage ? (
+                                <audio
+                                  controls
+                                  preload="metadata"
+                                  src={msg.voice_url}
+                                  className="mt-2 w-full max-w-65"
+                                >
+                                  Your browser does not support audio playback.
+                                </audio>
+                              ) : (
+                                <div className="mt-2 flex max-w-72.5 items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
+                                    <span className="text-base">🎙️</span>
+                                  </div>
+
+                                  <div className="min-w-0 flex-1">
+                                    <p className="mb-2 text-xs font-medium text-slate-300">
+                                      {msg.username} sent a voice message
+                                    </p>
+
+                                    <audio
+                                      controls
+                                      preload="metadata"
+                                      src={msg.voice_url}
+                                      className="w-full max-w-52.5"
+                                    >
+                                      Your browser does not support audio
+                                      playback.
+                                    </audio>
+                                  </div>
+                                </div>
+                              ))}
 
                             {messageReactions[msg.id] &&
                               messageReactions[msg.id].length > 0 && (
@@ -712,10 +730,11 @@ export default function WebSocketChat() {
 
                             <div className="mt-2 flex justify-end">
                               <p
-                                className={`text-[10px] sm:text-[11px] ${isOwnMessage
-                                  ? "text-cyan-50/80"
-                                  : "text-slate-400"
-                                  }`}
+                                className={`text-[10px] sm:text-[11px] ${
+                                  isOwnMessage
+                                    ? "text-cyan-50/80"
+                                    : "text-slate-400"
+                                }`}
                               >
                                 {new Date(msg.created_at).toLocaleString()}
                                 {isOwnMessage && ` • ${getOwnMessageStatus(msg)}`}
@@ -758,21 +777,35 @@ export default function WebSocketChat() {
                       <div className="max-w-[84%] sm:max-w-[68%] rounded-[22px] rounded-bl-md border border-white/10 bg-white/10 backdrop-blur-xl px-4 py-3 relative">
                         <span className="absolute -left-1 bottom-0 h-4 w-4 rotate-45 rounded-sm border-l border-b border-white/10 bg-white/10 backdrop-blur-xl" />
                         <div className="relative z-10">
-                          <p className="text-sm text-slate-300 mb-2">{typingText}</p>
+                          <p className="text-sm text-slate-300 mb-2">
+                            {typingText}
+                          </p>
                           <div className="flex items-center gap-1">
                             <motion.span
                               animate={{ y: [0, -4, 0] }}
-                              transition={{ repeat: Infinity, duration: 0.7, delay: 0 }}
+                              transition={{
+                                repeat: Infinity,
+                                duration: 0.7,
+                                delay: 0,
+                              }}
                               className="h-2 w-2 rounded-full bg-cyan-300"
                             />
                             <motion.span
                               animate={{ y: [0, -4, 0] }}
-                              transition={{ repeat: Infinity, duration: 0.7, delay: 0.15 }}
+                              transition={{
+                                repeat: Infinity,
+                                duration: 0.7,
+                                delay: 0.15,
+                              }}
                               className="h-2 w-2 rounded-full bg-cyan-300"
                             />
                             <motion.span
                               animate={{ y: [0, -4, 0] }}
-                              transition={{ repeat: Infinity, duration: 0.7, delay: 0.3 }}
+                              transition={{
+                                repeat: Infinity,
+                                duration: 0.7,
+                                delay: 0.3,
+                              }}
                               className="h-2 w-2 rounded-full bg-cyan-300"
                             />
                           </div>
