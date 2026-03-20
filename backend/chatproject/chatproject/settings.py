@@ -24,7 +24,17 @@ SECRET_KEY = 'django-insecure-33^p$$am6%m3^)2jzlf%h6*-49+-@=8%xn$%=+l590oh48h5o=
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG =False
+from dotenv import load_dotenv
 
+load_dotenv()
+import os
+import cloudinary
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+)
 ALLOWED_HOSTS = [
     "real-time-chat-application2-yxtc.onrender.com",
     ".onrender.com",
@@ -53,6 +63,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'cloudinary',
+    'cloudinary_storage',
     'chatapp',
 ]
 ASGI_APPLICATION = "chatproject.asgi.application"
@@ -138,7 +150,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-import os
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/

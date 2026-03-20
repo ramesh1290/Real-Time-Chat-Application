@@ -239,13 +239,10 @@ export default function VoiceRecorder({
       formData.append("voice", file);
       formData.append("username", username);
 
-      const res = await fetch(
-        "https://real-time-chat-application2-yxtc.onrender.com/api/upload-voice/",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const res = await fetch("https://real-time-cx`hat-application2-yxtc.onrender.com/api/upload-voice/", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!res.ok) {
         throw new Error("Voice upload failed");
@@ -283,7 +280,7 @@ export default function VoiceRecorder({
       )}
 
       {isRecording && (
-        <div className="flex items-center gap-2 rounded-full border border-pink-400/20 bg-linear-to-rrom-pink-500/15 via-rose-500/15 to-orange-500/15 px-3 py-2 text-white shadow-[0_8px_30px_rgba(236,72,153,0.12)] backdrop-blur-xl">
+        <div className="flex items-center gap-2 rounded-full border border-pink-400/20 bg-linear-to-r from-pink-500/15 via-rose-500/15 to-orange-500/15 px-3 py-2 text-white shadow-[0_8px_30px_rgba(236,72,153,0.12)] backdrop-blur-xl">
           <div className="flex items-center gap-2 rounded-full bg-black/20 px-3 py-2">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-400" />
             <span className="text-xs font-medium text-red-200">Recording</span>
@@ -305,7 +302,7 @@ export default function VoiceRecorder({
 
       {!isRecording && audioBlob && (
         <div className="flex max-w-full items-center gap-2 rounded-[22px] border border-white/10 bg-linear-to-r from-white/12 to-white/8 px-3 py-2 shadow-[0_10px_35px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
-          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-brrom-fuchsia-500 to-orange-500 text-white sm:flex">
+          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-fuchsia-500 to-orange-500 text-white sm:flex">
             <AudioLines size={18} />
           </div>
 
@@ -332,8 +329,6 @@ export default function VoiceRecorder({
           </button>
         </div>
       )}
-
-      {error && <p className="max-w-55 text-xs text-rose-300">{error}</p>}
     </div>
   );
 }

@@ -39,30 +39,30 @@ type ChatMessage = {
 
 type IncomingSocketMessage =
   | {
-      type?: "chat" | "voice";
-      id: number;
-      username: string;
-      text?: string;
-      gif_url?: string | null;
-      voice_url?: string | null;
-      created_at: string;
-    }
+    type?: "chat" | "voice";
+    id: number;
+    username: string;
+    text?: string;
+    gif_url?: string | null;
+    voice_url?: string | null;
+    created_at: string;
+  }
   | {
-      type: "typing";
-      username: string;
-      isTyping: boolean;
-    }
+    type: "typing";
+    username: string;
+    isTyping: boolean;
+  }
   | {
-      type: "receipt_update";
-      message_id: number;
-      username: string;
-      status: "delivered" | "seen";
-    }
+    type: "receipt_update";
+    message_id: number;
+    username: string;
+    status: "delivered" | "seen";
+  }
   | {
-      type: "reaction_update";
-      message_id: number;
-      reactions: MessageReaction[];
-    };
+    type: "reaction_update";
+    message_id: number;
+    reactions: MessageReaction[];
+  };
 
 function getAvatarLetter(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
@@ -459,8 +459,8 @@ export default function WebSocketChat() {
     typingUsers.length === 1
       ? `${typingUsers[0]} is typing...`
       : typingUsers.length > 1
-      ? `${typingUsers.join(", ")} are typing...`
-      : "";
+        ? `${typingUsers.join(", ")} are typing...`
+        : "";
 
   const getOwnMessageStatus = (msg: ChatMessage) => {
     if (msg.username.trim().toLowerCase() !== username.trim().toLowerCase()) {
@@ -537,11 +537,10 @@ export default function WebSocketChat() {
                 <motion.div
                   animate={{ scale: connected ? [1, 1.05, 1] : 1 }}
                   transition={{ duration: 0.35 }}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm ${
-                    connected
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm ${connected
                       ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-400"
                       : "border-rose-400/30 bg-rose-500/15 text-rose-400"
-                  }`}
+                    }`}
                 >
                   {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
                   {connected ? "Connected" : "Disconnected"}
@@ -617,9 +616,8 @@ export default function WebSocketChat() {
                           duration: 0.22,
                           delay: Math.min(index * 0.015, 0.12),
                         }}
-                        className={`flex items-end gap-2 ${
-                          isOwnMessage ? "justify-end" : "justify-start"
-                        }`}
+                        className={`flex items-end gap-2 ${isOwnMessage ? "justify-end" : "justify-start"
+                          }`}
                       >
                         {!isOwnMessage && (
                           <div
@@ -637,15 +635,13 @@ export default function WebSocketChat() {
                         )}
 
                         <div
-                          className={`relative rounded-[22px] border px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:scale-[1.01] ${
-                            !isOwnMessage && hasOnlyVoice
+                          className={`relative rounded-[22px] border px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:scale-[1.01] ${!isOwnMessage && hasOnlyVoice
                               ? "max-w-[320px] sm:max-w-85"
                               : "max-w-[84%] sm:max-w-[68%]"
-                          } ${
-                            isOwnMessage
+                            } ${isOwnMessage
                               ? "rounded-br-md border-cyan-200/20 bg-linear-to-bran-500 to-blue-600 text-white"
                               : "rounded-bl-md border-white/10 bg-white/10 text-slate-100 backdrop-blur-xl"
-                          }`}
+                            }`}
                         >
                           {!isOwnMessage && (
                             <span className="absolute -left-1 bottom-0 h-4 w-4 rotate-45 rounded-sm border-l border-b border-white/10 bg-white/10 backdrop-blur-xl" />
@@ -657,9 +653,8 @@ export default function WebSocketChat() {
                           <div className="relative z-10">
                             <div className="mb-1 flex items-center justify-between gap-3">
                               <span
-                                className={`text-sm font-bold ${
-                                  isOwnMessage ? "text-cyan-50" : "text-cyan-300"
-                                }`}
+                                className={`text-sm font-bold ${isOwnMessage ? "text-cyan-50" : "text-cyan-300"
+                                  }`}
                               >
                                 {isOwnMessage ? "You" : msg.username}
                               </span>
@@ -706,8 +701,7 @@ export default function WebSocketChat() {
                                       src={msg.voice_url}
                                       className="w-full max-w-52.5"
                                     >
-                                      Your browser does not support audio
-                                      playback.
+                                      Your browser does not support audio playback.
                                     </audio>
                                   </div>
                                 </div>
@@ -730,11 +724,10 @@ export default function WebSocketChat() {
 
                             <div className="mt-2 flex justify-end">
                               <p
-                                className={`text-[10px] sm:text-[11px] ${
-                                  isOwnMessage
+                                className={`text-[10px] sm:text-[11px] ${isOwnMessage
                                     ? "text-cyan-50/80"
                                     : "text-slate-400"
-                                }`}
+                                  }`}
                               >
                                 {new Date(msg.created_at).toLocaleString()}
                                 {isOwnMessage && ` • ${getOwnMessageStatus(msg)}`}
