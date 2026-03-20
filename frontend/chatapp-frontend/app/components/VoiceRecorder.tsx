@@ -239,7 +239,7 @@ export default function VoiceRecorder({
       formData.append("voice", file);
       formData.append("username", username);
 
-      const res = await fetch("https://real-time-cx`hat-application2-yxtc.onrender.com/api/upload-voice/", {
+      const res = await fetch("https://real-time-chat-application2-yxtc.onrender.com/api/upload-voice/", {
         method: "POST",
         body: formData,
       });
