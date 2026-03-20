@@ -17,6 +17,7 @@ class MessageReactionSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     receipts = MessageReceiptSerializer(many=True, read_only=True)
     reactions = MessageReactionSerializer(many=True, read_only=True)
+    voice_url = serializers.SerializerMethodField()  # NEW
 
     class Meta:
         model = Message
@@ -25,7 +26,17 @@ class MessageSerializer(serializers.ModelSerializer):
             "username",
             "text",
             "gif_url",
+            "voice",
+            "voice_url",
             "created_at",
             "receipts",
             "reactions",
         ]
+
+    def get_voice_url(self, obj):
+        request = self.context.get("request")
+        if obj.voice:
+            if request:
+                return request.build_absolute_uri(obj.voice.url)
+            return obj.voice.url
+        return None

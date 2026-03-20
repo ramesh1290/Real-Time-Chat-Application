@@ -4,11 +4,12 @@ from django.db import models
 class Message(models.Model):
     username = models.CharField(max_length=100)
     text = models.TextField(blank=True, null=True)
-    gif_url = models.URLField(blank=True, null=True)  # NEW: gif support
+    gif_url = models.URLField(blank=True, null=True)
+    voice = models.FileField(upload_to="voice_messages/", blank=True, null=True)  # NEW
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.username}: {self.text or 'GIF'}"
+        return f"{self.username}: {self.text or 'Media'}"
 
 
 class MessageReceipt(models.Model):
@@ -28,9 +29,6 @@ class MessageReceipt(models.Model):
 
     class Meta:
         unique_together = ("message", "username")
-
-    def __str__(self):
-        return f"{self.username} - {self.status}"
 
 
 class MessageReaction(models.Model):
@@ -54,6 +52,3 @@ class MessageReaction(models.Model):
 
     class Meta:
         unique_together = ("message", "username")
-
-    def __str__(self):
-        return f"{self.username} reacted {self.emoji} on message {self.message_id}"

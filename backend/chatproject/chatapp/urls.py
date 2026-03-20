@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import get_messages
+from .views import get_messages, upload_voice_message
 
 urlpatterns = [
-    # path("messages/", message_list_create, name="message_list_create"),
-   path("messages/", get_messages, name="get_messages"),
+    path("messages/", get_messages, name="get_messages"),
+    path("voice-message/", upload_voice_message, name="upload_voice_message"),  # NEW
 ]

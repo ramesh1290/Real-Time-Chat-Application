@@ -120,6 +120,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             return
 
+        # NEW: broadcast uploaded voice message
+        if message_type == "voice":
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    "type": "chat_message",
+                    "message_type": "chat",
+                    "id": data["id"],
+                    "username": data["username"],
+                    "text": "",
+                    "gif_url": None,
+                    "voice_url": data.get("voice_url"),
+                    "created_at": data["created_at"],
+                }
+            )
+            return
+
         username = data.get("username")
         text = data.get("text")
         gif_url = data.get("gif_url")
@@ -141,6 +158,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "username": message.username,
                 "text": message.text,
                 "gif_url": message.gif_url,
+                "voice_url": None,
                 "created_at": message.created_at.isoformat(),
             }
         )
@@ -150,8 +168,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "type": event.get("message_type", "chat"),
             "id": event["id"],
             "username": event["username"],
-            "text": event["text"],
+            "text": event.get("text"),
             "gif_url": event.get("gif_url"),
+            "voice_url": event.get("voice_url"),
             "created_at": event["created_at"],
         }))
 
